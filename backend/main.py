@@ -3,11 +3,29 @@ from sqlalchemy.orm import Session
 import models, schemas, crud
 from database import SessionLocal, engine
 from products import get_all_products
+from fastapi.middleware.cors import CORSMiddleware
 
 
-models.Base.metadata.create_all(bind=engine)
+
+from database import engine, Base
+from models import Contact
+
+Base.metadata.create_all(bind=engine)
+print("Database created successfully!")
 
 app = FastAPI()
+origins = [
+    "http://localhost:3000",
+    "http://localhost:3002",
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,  # frontend URLs
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 def get_db():
     db = SessionLocal()
@@ -17,9 +35,6 @@ def get_db():
         db.close()
         
         
-@app.get("/")
-def root():
-    return {"message": "Hello World"}
 
 
 #@app.get("/products")
@@ -70,26 +85,18 @@ def root():
 #     raise HTTPException(status_code=404, detail="Contact not found")    
 
 
-@app.post("/contact", response_model=schemas.ContactResponse)
+@app.get("/contacts")
+def get_contacts(db: Session = Depends(get_db)):
+    return crud.get_contacts(db)
+
+@app.post("/contacts")
 def add_contact(contact: schemas.ContactCreate, db: Session = Depends(get_db)):
     return crud.create_contact(db, contact)
 
-@app.get("/contact", response_model=list[schemas.ContactResponse])
-def get_all(db: Session = Depends(get_db)):
-    return crud.get_contacts(db)
+@app.put("/contacts/{id}")
+def update_contact(id: int, contact: schemas.ContactCreate, db: Session = Depends(get_db)):
+    return crud.update_contact(db, id, contact)
 
-@app.get("/contact/search")
-def search(name: str, db: Session = Depends(get_db)):
-    return crud.search_contact(db, name)
-
-
-
-@app.put("/contact/{id}")
-def update(id: int, phone: str, db: Session = Depends(get_db)):
-    return crud.update_contact(db, id, phone)
-
-
-@app.delete("/contact/{id}")
-def delete(id: int, db: Session = Depends(get_db)):
+@app.delete("/contacts/{id}")
+def delete_contact(id: int, db: Session = Depends(get_db)):
     return crud.delete_contact(db, id)
-
